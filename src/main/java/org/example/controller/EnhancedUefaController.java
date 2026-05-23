@@ -94,7 +94,7 @@ public class EnhancedUefaController {
             ov.printMatchInfo(teamsCount, ++roundMatchCount, teams.get(i), teams.get(i + 1));
             pressAnyKey();
 
-            TournamentParticipant winner = ms.threadFight(
+            TournamentParticipant winner = ms.fight(
                     teams.get(i),
                     teams.get(i + 1)
             );

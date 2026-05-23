@@ -100,7 +100,7 @@ public class UefaController {
 
         long start = System.nanoTime();
         ov.finalWinnerMessage(
-                ms.threadFight(
+                ms.fight(
                         teams.get(0),
                         teams.get(1)
                 )
@@ -135,7 +135,7 @@ public class UefaController {
 
             long start = System.nanoTime();
 
-            TournamentParticipant winner = ms.threadFight(
+            TournamentParticipant winner = ms.fight(
                     teams.get(i),
                     teams.get(i + 1)
             );
