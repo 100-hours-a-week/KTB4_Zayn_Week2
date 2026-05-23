@@ -5,7 +5,6 @@ import org.example.common.TournamentConstant;
 import org.example.common.UefaTeamInfo;
 import org.example.model.FootballTeam;
 import org.example.model.TournamentParticipant;
-import org.example.model.Winnable;
 import org.example.service.MatchService;
 import org.example.view.InputView;
 import org.example.view.OutputView;
@@ -102,8 +101,8 @@ public class UefaController {
         long start = System.nanoTime();
         ov.finalWinnerMessage(
                 ms.threadFight(
-                        (Winnable) teams.get(0),
-                        (Winnable) teams.get(1)
+                        teams.get(0),
+                        teams.get(1)
                 )
         );
         long end = System.nanoTime();
