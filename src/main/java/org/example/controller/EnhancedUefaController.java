@@ -42,17 +42,15 @@ public class EnhancedUefaController {
     }
 
     private void init() {
-        for (UefaTeamInfo teamName : UefaTeamInfo.values())
-            teams.add(
-                    new TournamentParticipant(
-                            new FootballTeam(
-                                    teamName.getFullName(),
-                                    teamName.getShortName(),
-                                    teamName.getDefenseAbility()
-                            ),
-                            teamName.getWinningRate()
-                    )
+        for (UefaTeamInfo teamName : UefaTeamInfo.values()) {
+            FootballTeam tempFootballTeam = new FootballTeam(
+                    teamName.getFullName(),
+                    teamName.getShortName(),
+                    teamName.getDefenseAbility()
             );
+
+            teams.add(new TournamentParticipant(tempFootballTeam, teamName.getWinningRate()));
+        }
 
         ov.displayInitMessage();
         pressAnyKey();
