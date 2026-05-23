@@ -11,6 +11,8 @@ import org.example.view.OutputView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class EnhancedUefaController {
     private final InputView iv;
@@ -18,6 +20,7 @@ public class EnhancedUefaController {
     private final MatchService ms;
 
     private List<TournamentParticipant> teams = new ArrayList<>();
+    private final ExecutorService pool = Executors.newFixedThreadPool(8);
 
     public EnhancedUefaController() {
         this.iv = new InputView();
@@ -88,18 +91,24 @@ public class EnhancedUefaController {
 
     private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams) {
         List<TournamentParticipant> winners = new ArrayList<>();
+        List<TournamentParticipant> losers = new ArrayList<>();
 
-        int roundMatchCount = 0;
         for (int i = 0; i < teamsCount; i += 2) {
-            ov.printMatchInfo(teamsCount, ++roundMatchCount, teams.get(i), teams.get(i + 1));
-            pressAnyKey();
-
             TournamentParticipant winner = ms.fight(
                     teams.get(i),
                     teams.get(i + 1)
             );
+
+            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
             winners.add(winner);
-            ov.printWinner(winner);
+            losers.add(loser);
+        }
+
+        int roundMatchCount = 0;
+        for (int i = 0; i < teamsCount; i += 2) {
+            ov.printMatchInfo(teamsCount, roundMatchCount + 1, teams.get(i), teams.get(i + 1));
+            pressAnyKey();
+            ov.printMatchResult(winners.get(roundMatchCount), losers.get(roundMatchCount++));
         }
 
         return winners;

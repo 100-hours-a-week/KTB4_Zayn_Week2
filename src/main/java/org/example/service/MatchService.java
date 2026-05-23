@@ -18,12 +18,14 @@ public class MatchService {
     }
 
     // 과중책임 -> 추후 메서드 분리하고 특정 상수는 enum으로 관리
-    public TournamentParticipant fight(Winnable teamA, Winnable teamB) {
+    public TournamentParticipant fight(TournamentParticipant teamA, TournamentParticipant teamB) {
         int matchTime = 0;
-        int teamAScore = 0, teamBScore = 0;
 
-        ((TournamentParticipant) teamA).clearInjuryCount();
-        ((TournamentParticipant) teamB).clearInjuryCount();
+        teamA.resetScore();
+        teamB.resetScore();
+
+        teamA.clearInjuryCount();
+        teamB.clearInjuryCount();
 
         teamA.setWinningRate(teamA.getBaseWinningRate());
         teamB.setWinningRate(teamB.getBaseWinningRate());
@@ -34,8 +36,8 @@ public class MatchService {
 
             // 수비 실패
             if (!tryDefense(defender)) {
-                teamAScore += (defender == teamB) ? 1 : 0;
-                teamBScore += (defender == teamA) ? 1 : 0;
+                if (defender == teamB) teamA.addScore();
+                if (defender == teamA) teamB.addScore();
             }
 
             // 부상 로직 적용 -> 공격-수비 팀 선택에 영향을 끼친다.
@@ -45,15 +47,10 @@ public class MatchService {
             matchTime += FootballConstant.TIME_SPLIT.getValue();
         }
 
-        if (teamAScore == teamBScore) {
-            System.out.println(teamAScore + " : " + teamBScore);
-            System.out.println("승부차기 진행");
+        if (teamA.getScore() == teamB.getScore())
+            return penaltyShootout() ? teamA : teamB;
 
-            return penaltyShootout() ? (TournamentParticipant) teamA : (TournamentParticipant) teamB;
-        }
-
-        System.out.println(teamAScore + " : " + teamBScore);
-        return teamAScore > teamBScore ? (TournamentParticipant) teamA : (TournamentParticipant) teamB;
+        return teamA.getScore() > teamB.getScore() ? teamA : teamB;
     }
 
     private Winnable determineDefender(Winnable teamA, Winnable teamB) {

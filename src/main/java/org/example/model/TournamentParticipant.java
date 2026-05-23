@@ -2,11 +2,12 @@ package org.example.model;
 
 import org.example.common.ErrorMessage;
 
-public class TournamentParticipant implements Winnable, Injurable {
+public class TournamentParticipant implements Winnable, Injurable, Scorable {
     private final FootballTeam team;
     private final double baseWinningRate;
     private double winningRate;
     private int occurInjuryCount = 0;
+    private int score = 0;
 
     public TournamentParticipant(FootballTeam team, double winningRate) {
         this.team = team;
@@ -51,5 +52,17 @@ public class TournamentParticipant implements Winnable, Injurable {
 
     public double getDefenseAbility() {
         return team.getDefenseAbility();
+    }
+
+    public void resetScore() {
+        this.score = 0;
+    }
+
+    public void addScore() {
+        this.score++;
+    }
+
+    public int getScore() {
+        return this.score;
     }
 }
