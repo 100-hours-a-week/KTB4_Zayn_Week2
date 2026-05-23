@@ -4,12 +4,14 @@ import org.example.common.ErrorMessage;
 
 public class TournamentParticipant implements Winnable, Injurable {
     private final FootballTeam team;
+    private final double baseWinningRate;
     private double winningRate;
     private int occurInjuryCount = 0;
 
     public TournamentParticipant(FootballTeam team, double winningRate) {
         this.team = team;
         this.winningRate = winningRate;
+        this.baseWinningRate = winningRate;
     }
 
     public String getTeamName() {
@@ -31,11 +33,23 @@ public class TournamentParticipant implements Winnable, Injurable {
         return this.winningRate;
     }
 
+    public double getBaseWinningRate() {
+        return this.baseWinningRate;
+    }
+
     public void injure() {
         this.occurInjuryCount++;
     }
 
     public int getInjuryCount() {
         return this.occurInjuryCount;
+    }
+
+    public void clearInjuryCount() {
+        this.occurInjuryCount = 0;
+    }
+
+    public double getDefenseAbility() {
+        return team.getDefenseAbility();
     }
 }

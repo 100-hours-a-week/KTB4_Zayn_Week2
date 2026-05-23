@@ -50,7 +50,8 @@ public class UefaController {
                     new TournamentParticipant(
                             new FootballTeam(
                                     teamName.getFullName(),
-                                    teamName.getShortName()
+                                    teamName.getShortName(),
+                                    teamName.getDefenseAbility()
                             ),
                             teamName.getWinningRate()
                     )
@@ -99,7 +100,7 @@ public class UefaController {
         pressAnyKey();
 
         ov.finalWinnerMessage(
-                ms.fight(
+                ms.threadFight(
                         (Winnable) teams.get(0),
                         (Winnable) teams.get(1)
                 )
@@ -130,7 +131,7 @@ public class UefaController {
             ov.printMatchInfo(teamsCount, ++roundMatchCount, teams.get(i), teams.get(i + 1));
             pressAnyKey();
 
-            TournamentParticipant winner = ms.fight(
+            TournamentParticipant winner = ms.threadFight(
                     teams.get(i),
                     teams.get(i + 1)
             );
