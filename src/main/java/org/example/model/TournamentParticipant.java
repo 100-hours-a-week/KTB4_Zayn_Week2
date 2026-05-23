@@ -10,8 +10,8 @@ public class TournamentParticipant implements Winnable, Injurable {
 
     public TournamentParticipant(FootballTeam team, double winningRate) {
         this.team = team;
-        this.winningRate = winningRate;
         this.baseWinningRate = winningRate;
+        this.winningRate = winningRate;
     }
 
     public String getTeamName() {
