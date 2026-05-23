@@ -11,8 +11,10 @@ import org.example.view.OutputView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class EnhancedUefaController {
     private final InputView iv;
@@ -20,7 +22,7 @@ public class EnhancedUefaController {
     private final MatchService ms;
 
     private List<TournamentParticipant> teams = new ArrayList<>();
-    private final ExecutorService pool = Executors.newFixedThreadPool(8);
+    private final ExecutorService pool = Executors.newFixedThreadPool(4);
 
     public EnhancedUefaController() {
         this.iv = new InputView();
@@ -37,10 +39,11 @@ public class EnhancedUefaController {
             playSemiFinals(TournamentConstant.SEMI_FINALS.getValue());
             playFinal(TournamentConstant.FINAL.getValue());
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ExecutionException | InterruptedException e) {
             System.out.println(e.getMessage());
         } finally {
             iv.close();
+            pool.shutdown();
         }
     }
 
@@ -59,18 +62,18 @@ public class EnhancedUefaController {
         pressAnyKey();
     }
 
-    private void bracketAndProgressMatch(int roundInfo) {
+    private void bracketAndProgressMatch(int roundInfo) throws ExecutionException, InterruptedException {
         ov.displayTeamsMessage(teams);
-        teams = createBracket(teams.size(), teams); // 대진 작성
-        teams = progressMatch(roundInfo, teams); // 경기 진행
+        teams = createBracket(teams.size(), teams);
+        teams = progressMatch(roundInfo, teams);
     }
 
-    private void playSemiFinals(int roundInfo) {
+    private void playSemiFinals(int roundInfo) throws ExecutionException, InterruptedException {
         ov.displayTeamsMessage(teams);
         teams = progressMatch(roundInfo, teams);
     }
 
-    private void playFinal(int roundInfo) {
+    private void playFinal(int roundInfo) throws ExecutionException, InterruptedException {
         teams = progressMatch(roundInfo, teams);
         ov.finalWinnerMessage(teams.getFirst());
     }
@@ -89,20 +92,37 @@ public class EnhancedUefaController {
         return matchTeams;
     }
 
-    private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams) {
+    private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams)
+            throws InterruptedException, ExecutionException {
         List<TournamentParticipant> winners = new ArrayList<>();
         List<TournamentParticipant> losers = new ArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
+
+//        long start = System.currentTimeMillis();
 
         for (int i = 0; i < teamsCount; i += 2) {
-            TournamentParticipant winner = ms.fight(
-                    teams.get(i),
-                    teams.get(i + 1)
-            );
+            final int idx = i;
+            futures.add(pool.submit(() -> {
+                TournamentParticipant winner = ms.fight(
+                        teams.get(idx),
+                        teams.get(idx + 1)
+                );
+                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
 
-            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
-            winners.add(winner);
-            losers.add(loser);
+                synchronized (winners) {
+                    winners.add(winner);
+                }
+                synchronized (losers) {
+                    losers.add(loser);
+                }
+            }));
         }
+
+        for (Future<?> future : futures)
+            future.get();
+
+//        long end = System.currentTimeMillis();
+//        System.out.println((end - start) + "ms");
 
         int roundMatchCount = 0;
         for (int i = 0; i < teamsCount; i += 2) {
