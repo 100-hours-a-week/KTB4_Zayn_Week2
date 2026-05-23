@@ -199,3 +199,112 @@ private void playFinal(int roundInfo) {
 기존 `UefaController`는 남겨두고, 새로운 `EnhancedUefaController`를 생성하였다.
 
 <br/>
+
+### 5. 멀티 스레드 적용 구역 : ExecutorService
+
+전체 토너먼트 시나리오의 흐름을 담당하는 컨트롤러 내 `progressMatch()`메서드에서 각 매치를 진행한다.
+
+```java
+private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams) {
+    List<TournamentParticipant> winners = new ArrayList<>();
+
+    int roundMatchCount = 0;
+    for (int i = 0; i < teamsCount; i += 2) {
+        ov.printMatchInfo(teamsCount, ++roundMatchCount, teams.get(i), teams.get(i + 1));
+        pressAnyKey();
+
+        TournamentParticipant winner = ms.fight(
+                teams.get(i),
+                teams.get(i + 1)
+        );
+        winners.add(winner);
+        ov.printWinner(winner);
+    }
+
+    return winners;
+}
+```
+
+이때 각 경기의 매치를 멀티스레드로 진행하며 스레드풀을 이용해 라운드마다 생성, 종료 비용을 줄이고자<br/>
+`ExecutorService` 인터페이스를 활용했으면 구현체로 `newFixedThreadPool`을 사용해 스레드 수를 고정하였다.
+
+```java
+// 컨트롤러의 멤버
+private final ExecutorService pool = Executors.newFixedThreadPool(8);
+```
+
+스레드를 적용하기 앞서 progressMatch 내에서 입출력 관련 코드를 따로 빼내어<br/>
+모든 연산이 진행되고 난후 입출력이 발생하게 수정하였다. (연산 부에 스레드를 적용하기 위해)
+
+```java
+private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams) {
+        List<TournamentParticipant> winners = new ArrayList<>();
+        List<TournamentParticipant> losers = new ArrayList<>();
+```
+
+```java
+    // 연산 부
+    for (int i = 0; i < teamsCount; i += 2) {
+        TournamentParticipant winner = ms.fight(
+                teams.get(i),
+                teams.get(i + 1)
+        );
+
+        TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
+        winners.add(winner);
+        losers.add(loser);
+    }
+```
+```java
+    // 입출력 부
+    int roundMatchCount = 0;
+    for (int i = 0; i < teamsCount; i += 2) {
+        ov.printMatchInfo(teamsCount, roundMatchCount + 1, teams.get(i), teams.get(i + 1));
+        pressAnyKey();
+        ov.printMatchResult(winners.get(roundMatchCount), losers.get(roundMatchCount++));
+    }
+
+    return winners;
+}
+```
+
+이후 만들어 둔 스레드풀을 적용한 `progressMatch()` 메서드 내부 코드는 다음과 같다.
+
+```java
+List<Future<?>> futures = new ArrayList<>();
+for (int i = 0; i < teamsCount; i += 2) {
+    final int idx = i;
+    futures.add(pool.submit(() -> {
+        TournamentParticipant winner = ms.fight(
+                teams.get(idx),
+                teams.get(idx + 1)
+        );
+        TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
+
+        synchronized (winners) {
+            winners.add(winner);
+        }
+        synchronized (losers) {
+            losers.add(loser);
+        }
+    }));
+}
+```
+
+실제로 멀티스레드를 통한 동시 실행이 성능적 개선이 있는 지 확인해보기 위해<br/>
+
+```java
+long start = System.currentTimeMillis();
+
+    (매치 로직)
+
+long end = System.currentTimeMillis();
+```
+
+간단한 `System` 클래스의 `nanoTime()` 메서드를 통해 멀티스레드 적용 전과 멀티스레드 적용 후의 차이를 확인해보았다.
+
+해야할 것<br/>
+-> 실행 시 마다 상이한 결과 => 아마 무승부 로직 때문 (Thread.sleep())<br/>
+-> 무승부가 일어나지 않을 때는 내부 로직이 너무 빠르게 처리되어 차이가 안보이는 것<br/>
+=> 측정 스케일을 조정? -> 무승부가 차지하는 비용이 너무 커서 의미있는 지표가 아닐 수 있다.<br/>
+=> 무승부 Thread.sleep()을 빼고 스케일을 조정해서 측정해보자
