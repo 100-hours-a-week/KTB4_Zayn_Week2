@@ -104,3 +104,98 @@ ex) 16강의 경우
 ```
 
 2. 스레드를 매 라운드마다 생성하고 종료하는 비용은 너무 클 것이다. 따라서 `스레드 풀을 통해 재사용`한다.
+
+```java
+import java.util.concurrent.ExecutorService;
+
+ExecutorService pool = Executors.newFixedThreadPool(8);
+```
+
+<br/>
+
+### 4. `컨트롤러 추가 리팩토링`
+
+멀티스레드를 기존 기획대로 도입하기 위해, 컨트롤러의 코드를 살펴보았으나 한 번에 구조를 알아보기 힘들었고<br/>
+자연스럽게 어느 부분에 스레드를 도입해야할지 생각하는 과정이 너무 오래걸렸다.<br/>
+따라서 전체적으로 가독성을 향상시킨 후 스레드를 도입하잔 생각이 들어 내부를 살펴보았다.
+
+메서드명만 나눠져 있을 뿐 사실상 동일 동작을 수행하는 `16강 실행 메서드`와 `8강 실행 메서드`를 발견하였고<br/>
+`4강 실행 메서드`, `결승 실행 메서드`를 포함하여 모든 라운드마다 크게 다음 두 가지 메서드를 실행함을 확인하였다.
+
+- **대진표 작성(createBracket)** : `16강`, `8강`
+- **경기 진행(progressMatch)** : `16강`, `8강`, `4강`, `결승`
+
+이에 기존 `run()` 메서드 자체 구조를
+
+```java
+    public void run() {
+    init();
+
+    try {
+        List<TournamentParticipant> winners = playRoundOf16();
+        List<TournamentParticipant> semiFinalsTeams = playQuarterFinals(winners);
+
+        playFinal(
+                playSemiFinals(semiFinalsTeams)
+        );
+    } catch (IllegalArgumentException e) {
+        System.out.println(e.getMessage());
+    }
+}
+```
+
+다음처럼 변경하였고
+
+```java
+    public void run() {
+        init();
+
+        try {
+            bracketAndProgressMatch(TournamentConstant.ROUND_OF_16.getValue());
+            bracketAndProgressMatch(TournamentConstant.QUARTER_FINALS.getValue());
+            playSemiFinals(TournamentConstant.SEMI_FINALS.getValue());
+            playFinal(TournamentConstant.FINAL.getValue());
+
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        } finally {
+            iv.close(); // 기존엔 playFinal() 내부에 있었으나, 메서드의 동작과 관련이 없기에 finally로 이동
+        }
+    }
+```
+
+본래 이전 라운드 팀 목록을 인자로 받아 새로운 승자 팀 리스트 만드는 방식으로 진행하였으나,
+
+```java
+//private final List<TournamentParticipant> totalTeams = new ArrayList<>();
+private List<TournamentParticipant> teams = new ArrayList<>();
+```
+
+기존 `totalTeams` 필드에서 `final`키워드를 제거하여 동일 변수를 재활용하도록 하였다.<br/>
+또한 라운드 진행에 해당하는 메서드의 매개변수로 enum(`TournamentConstant`) 상수를 활용하여,<br/>
+가독성을 증가시키고자 하였다.
+
+하단은 수정된 각 라운드의 내부 코드이다.
+
+```java
+private void bracketAndProgressMatch(int roundInfo) {
+    ov.displayTeamsMessage(teams);
+    teams = createBracket(teams.size(), teams);
+    teams = progressMatch(roundInfo, teams);
+}
+
+private void playSemiFinals(int roundInfo) {
+    ov.displayTeamsMessage(teams);
+    teams = progressMatch(roundInfo, teams);
+}
+
+private void playFinal(int roundInfo) {
+    teams = progressMatch(roundInfo, teams);
+    ov.finalWinnerMessage(teams.getFirst());
+}
+```
+
+이전 컨트롤러와의 차이점도 살펴보고, 새 컨트롤러 동작 중 문제가 발생하면 참고하고자<br/>
+기존 `UefaController`는 남겨두고, 새로운 `EnhancedUefaController`를 생성하였다.
+
+<br/>
