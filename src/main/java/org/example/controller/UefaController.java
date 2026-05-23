@@ -99,12 +99,15 @@ public class UefaController {
         );
         pressAnyKey();
 
+        long start = System.nanoTime();
         ov.finalWinnerMessage(
                 ms.threadFight(
                         (Winnable) teams.get(0),
                         (Winnable) teams.get(1)
                 )
         );
+        long end = System.nanoTime();
+        System.out.println((end - start) / 1_000 + "μs");
 
         iv.close();
     }
@@ -131,10 +134,16 @@ public class UefaController {
             ov.printMatchInfo(teamsCount, ++roundMatchCount, teams.get(i), teams.get(i + 1));
             pressAnyKey();
 
+            long start = System.nanoTime();
+
             TournamentParticipant winner = ms.threadFight(
                     teams.get(i),
                     teams.get(i + 1)
             );
+
+            long end = System.nanoTime();
+            System.out.println((end - start) / 1_000 + "μs");
+
             winners.add(winner);
             ov.printWinner(winner);
         }
