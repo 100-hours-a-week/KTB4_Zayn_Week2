@@ -200,7 +200,7 @@ private void playFinal(int roundInfo) {
 
 <br/>
 
-### 5. 멀티 스레드 적용 구역 : ExecutorService
+### 5. `멀티 스레드 적용 과정 : ExecutorService`
 
 전체 토너먼트 시나리오의 흐름을 담당하는 컨트롤러 내 `progressMatch()`메서드에서 각 매치를 진행한다.
 
