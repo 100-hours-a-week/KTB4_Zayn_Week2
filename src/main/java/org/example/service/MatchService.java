@@ -2,7 +2,6 @@ package org.example.service;
 
 import org.example.common.FootballConstant;
 import org.example.common.RandomConstant;
-//import org.example.model.FootballTeam;
 import org.example.model.Injurable;
 import org.example.model.TournamentParticipant;
 import org.example.model.Winnable;
@@ -79,7 +78,6 @@ public class MatchService {
 
     private boolean penaltyShootout() {
         int shootoutTime = rd.nextInt(FootballConstant.SHOOTOUT_TIME.getValue());
-//        int shootoutTime = 100; // 멀티스레드 성능 측정을 위해 스레드 대기 시간 항상 0.1s로 임시 설정
         try {
             Thread.sleep(shootoutTime);
         } catch (InterruptedException e) {

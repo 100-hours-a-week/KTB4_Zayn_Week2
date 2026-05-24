@@ -103,20 +103,6 @@ public class EnhancedUefaController {
 
         long start = System.currentTimeMillis();
 
-// 단일스레드 실행 로직
-//        for (int i = 0; i < teamsCount; i += 2) {
-//            int matchIdx = i / 2;
-//
-//            TournamentParticipant winner = ms.fight(
-//                    teams.get(i),
-//                    teams.get(i + 1)
-//            );
-//
-//            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
-//            winners.set(matchIdx, winner);
-//            losers.add(matchIdx, loser);
-//        }
-
 // 멀티스레드 적용 로직
         for (int i = 0; i < teamsCount; i += 2) {
             final int idx = i;
