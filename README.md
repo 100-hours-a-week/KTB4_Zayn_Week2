@@ -4,7 +4,7 @@
 
 ## 목차
 
-**`개발과정 기록`**
+[**개발과정 기록**](#devlog)
 1. [Gradle 빌드 도구 도입 배경](#gradle)
 2. [1주차 피드백 반영 주요 리팩토링, 변경 사항](#refactoring)
     - 2-1) FootballTeam 객체를 TournamentParticipant 내부 필드로 변경
@@ -20,11 +20,11 @@
 7. [시간 소요 원인 파악](#cause)
 8. [적절 스레드 수 설정](#thread-count)
 
-**`회고`**
+[**회고**](#retrospect)
 
 ---
 
-## 개발 과정 기록
+## <a id = "devlog"></a>개발 과정 기록
 
 ### <a id="gradle"></a>1. `Gradle 빌드 도구 도입 배경`
 
@@ -504,7 +504,7 @@ private final ExecutorService pool = Executors.newFixedThreadPool(4);
 
 ---
 
-## 회고
+## <a id = "retrospect"></a>회고
 
 ### 1. 새로운 기능추가 시 겪은 불편함
 
