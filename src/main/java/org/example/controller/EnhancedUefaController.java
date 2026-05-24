@@ -1,10 +1,8 @@
 package org.example.controller;
 
 import org.example.common.ErrorMessage;
-import org.example.common.RoundName;
 import org.example.common.TournamentConstant;
 import org.example.common.UefaTeamInfo;
-import org.example.log.TournamentLogger;
 import org.example.model.FootballTeam;
 import org.example.model.TournamentParticipant;
 import org.example.service.MatchService;
@@ -101,40 +99,45 @@ public class EnhancedUefaController {
         List<TournamentParticipant> losers = new ArrayList<>(Collections.nCopies(teamsCount / 2, null));
         List<Future<?>> futures = new ArrayList<>();
 
-        long start = System.currentTimeMillis();
+        splitAndPlayMatch(winners, losers, futures, teamsCount);
+        waitMatch(futures);
+        printResult(teamsCount, winners, losers);
 
-// 멀티스레드 적용 로직
+        return winners;
+    }
+
+    private void splitAndPlayMatch(List<TournamentParticipant> winners, List<TournamentParticipant> losers, List<Future<?>> futures, int teamsCount) {
         for (int i = 0; i < teamsCount; i += 2) {
             final int idx = i;
             final int matchIdx = i / 2;
 
-            futures.add(pool.submit(() -> {
-                TournamentParticipant winner = ms.fight(
-                        teams.get(idx),
-                        teams.get(idx + 1)
-                );
-                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
-
-                winners.set(matchIdx, winner);
-                losers.set(matchIdx, loser);
-            }));
+            futures.add(pool.submit(() -> playMatch(idx, matchIdx, winners, losers)));
         }
+    }
 
+    private void playMatch(int idx, int matchIdx, List<TournamentParticipant> winners, List<TournamentParticipant> losers) {
+        TournamentParticipant winner = ms.fight(
+                teams.get(idx),
+                teams.get(idx + 1)
+        );
+        TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
+
+        winners.set(matchIdx, winner);
+        losers.set(matchIdx, loser);
+    }
+
+    private void waitMatch(List<Future<?>> futures) throws InterruptedException, ExecutionException {
         for (Future<?> future : futures)
             future.get();
+    }
 
-        long end = System.currentTimeMillis();
-
-        TournamentLogger.saveLog(RoundName.getRound(teamsCount), (end - start));
-
+    private void printResult(int teamsCount, List<TournamentParticipant> winners, List<TournamentParticipant> losers) {
         int roundMatchCount = 0;
         for (int i = 0; i < teamsCount; i += 2) {
             ov.printMatchInfo(teamsCount, roundMatchCount + 1, teams.get(i), teams.get(i + 1));
             pressAnyKey();
             ov.printMatchResult(winners.get(roundMatchCount), losers.get(roundMatchCount++));
         }
-
-        return winners;
     }
 
     private void validateIdxScope(int round, int idx, boolean[] isSelected) {
