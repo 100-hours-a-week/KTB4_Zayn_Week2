@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public enum RoundName {
     ROUND_OF_16(16, "16강"),
-    QUATER_FINALS(8, "8강"),
+    QUARTER_FINALS(8, "8강"),
     SEMI_FINALS(4, "4강"),
     FINAL(2, "결승");
 
