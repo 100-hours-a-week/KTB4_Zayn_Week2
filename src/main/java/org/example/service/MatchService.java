@@ -16,10 +16,13 @@ public class MatchService {
         this.rd = new Random();
     }
 
-    // 과중책임 -> 추후 메서드 분리하고 특정 상수는 enum으로 관리
     public TournamentParticipant fight(TournamentParticipant teamA, TournamentParticipant teamB) {
-        int matchTime = 0;
+        initFightValues(teamA, teamB);
+        playFullTime(teamA, teamB);
+        return determineWinner(teamA, teamB);
+    }
 
+    private void initFightValues(TournamentParticipant teamA, TournamentParticipant teamB) {
         teamA.resetScore();
         teamB.resetScore();
 
@@ -28,28 +31,33 @@ public class MatchService {
 
         teamA.setWinningRate(teamA.getBaseWinningRate());
         teamB.setWinningRate(teamB.getBaseWinningRate());
+    }
+
+    private void playFullTime(TournamentParticipant teamA, TournamentParticipant teamB) {
+        int matchTime = 0;
 
         while (matchTime < FootballConstant.FULL_TIME.getValue()) {
-            // 수비팀 선택
             Winnable defender = determineDefender(teamA, teamB);
 
-            // 수비 실패
-            if (!tryDefense(defender)) {
-                if (defender == teamB) teamA.addScore();
-                if (defender == teamA) teamB.addScore();
-            }
+            tryScoring(defender, teamA, teamB);
 
-            // 부상 로직 적용 -> 공격-수비 팀 선택에 영향을 끼친다.
             applyInjuries(teamA, teamB);
-
-            // 경기 시간 증가
             matchTime += FootballConstant.TIME_SPLIT.getValue();
         }
+    }
 
+    private TournamentParticipant determineWinner(TournamentParticipant teamA, TournamentParticipant teamB) {
         if (teamA.getScore() == teamB.getScore())
             return penaltyShootout() ? teamA : teamB;
 
         return teamA.getScore() > teamB.getScore() ? teamA : teamB;
+    }
+
+    private void tryScoring(Winnable defender, TournamentParticipant teamA, TournamentParticipant teamB) {
+        if (!successDefense(defender)) {
+            TournamentParticipant attacker = (defender == teamA) ? teamB : teamA;
+            attacker.addScore();
+        }
     }
 
     private Winnable determineDefender(Winnable teamA, Winnable teamB) {
@@ -67,7 +75,7 @@ public class MatchService {
         return teamA;
     }
 
-    private boolean tryDefense(Winnable defender) {
+    private boolean successDefense(Winnable defender) {
         double defenseAbility = ((TournamentParticipant) defender).getDefenseAbility();
 
         double defenseProbability = RandomConstant.DEFENSE_BASE.getValue()
