@@ -41,10 +41,10 @@ public class OutputView {
 
     public void printMatchResult(TournamentParticipant winner, TournamentParticipant loser) {
         System.out.println(ViewMessage.MIDDLE_BAR.getMessage());
-        System.out.println(winner.getShortName() + " " + winner.getScore() + " : " + loser.getScore() + " " + loser.getShortName());
-        if (winner.getScore() == loser.getScore()) {
-            System.out.println("승부차기 진행");
-        }
+        System.out.println(ViewMessage.MATCH_SCORE.get(winner.getShortName(), winner.getScore(), loser.getScore(), loser.getShortName()));
+        if (winner.getScore() == loser.getScore())
+            System.out.println(ViewMessage.SHOOTOUT_MESSAGE.getMessage());
+
         System.out.println(ViewMessage.WINNER_MESSAGE.get(winner.getTeamName(), winner.getShortName()));
         System.out.println(ViewMessage.MIDDLE_BAR.getMessage());
     }

@@ -30,7 +30,11 @@ public enum ViewMessage {
     MATCH_INFO("""
             %S %d경기
             %s(%s) vs %s(%s)
-            """);
+            """),
+    MATCH_SCORE("""
+            %s %d : %d %s
+            """),
+    SHOOTOUT_MESSAGE("***승부차기 진행***");
 
     private final String message;
 
