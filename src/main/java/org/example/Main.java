@@ -1,10 +1,10 @@
 package org.example;
 
-import org.example.controller.EnhancedUefaController;
+import org.example.controller.UefaController;
 
 public class Main {
     public static void main(String[] args) {
-        EnhancedUefaController enhancedUefaController = new EnhancedUefaController();
-        enhancedUefaController.run();
+        UefaController uefaController = new UefaController();
+        uefaController.run();
     }
 }
