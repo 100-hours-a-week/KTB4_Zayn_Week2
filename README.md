@@ -291,6 +291,8 @@ for (int i = 0; i < teamsCount; i += 2) {
 }
 ```
 
+<br/>
+
 ### 6. `멀티스레드 적용 성능 개선 확인`
 
 실제로 멀티스레드를 통한 동시 실행이 성능적 개선이 있는 지 확인해보기 위해<br/>
@@ -347,7 +349,7 @@ long end = System.currentTimeMillis();
 
 실제 수치를 살펴보면 **오히려 멀티스레드에서 더 많은 시간이 소요**되는 것을 확인할 수 있었다.
 
----
+<br/>
 
 ### 7. `시간 소요 원인 파악`
 
@@ -442,4 +444,37 @@ private final ExecutorService pool = Executors.newFixedThreadPool(8);
 **동시에 필요 스레드 수보다 과하게 사용할 경우엔<br/>
 멀티스레드를 통한 시간적 비용 이득을 볼 수 없으며, 스레드의 컨텍스트 스위칭 비용만 상승함을 확인했다.**
 
+<br/>
+
+### 8. 적절 스레드 수 설정
+
+앞선 `7. 시간 소요 원인 파악` 부에서 얻은 데이터를 바탕으로 시스템에 맞는 적절한 스레드 수를 고민하여 보았다.
+
+초기에 기획하였을 때는 첫 라운드인 16강의 매치 수 `8`로 스레드 풀의 수를 고정하였으나
+
+```java
+private final ExecutorService pool = Executors.newFixedThreadPool(8);
+```
+
+본 시스템에서는 무승부가 아닐 경우의 작업이 컨텍스트 스위칭 비용보다 크기에 <br/>
+초기 스레드 풀의 수를 모든 매치 수에 맞추어 설정하는 것은 단일 스레드보다 더 큰 비용이 발생함을 확인하였다.
+
+그렇다고 단일스레드로 처리하기에는 모든 매치가 무승부를 진행하며 최대 작업 시간이 걸리는 최악의 경우
+
+```java
+int shootoutTime = rd.nextInt(FootballConstant.SHOOTOUT_TIME.getValue());
+```
+
+이론적으로 16강에서만 `SHOOTOUT_TIME * 8 + @`의 시간 비용이 발생한다.<br/>
+따라서 앞선 모든 매치 무승부를 고려한 데이터의 선형적 성능 개선 데이터를 고려하여 스레드풀의 수를 정해야했다.
+
+위 내용들을 반영하여, 본 시스템에서는 최악의 경우의 시간 비용을 막고, 컨텍스트 스위칭 비용을 어느정도 줄이고자<br/>
+
+```java
+private final ExecutorService pool = Executors.newFixedThreadPool(4);
+```
+
+스레드 풀의 수를 `4`로 설정하였다.
+
 ---
+
