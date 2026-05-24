@@ -12,6 +12,7 @@ import org.example.view.InputView;
 import org.example.view.OutputView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -96,45 +97,45 @@ public class EnhancedUefaController {
 
     private List<TournamentParticipant> progressMatch(int teamsCount, List<TournamentParticipant> teams)
             throws InterruptedException, ExecutionException {
-        List<TournamentParticipant> winners = new ArrayList<>();
-        List<TournamentParticipant> losers = new ArrayList<>();
+        List<TournamentParticipant> winners = new ArrayList<>(Collections.nCopies(teamsCount / 2, null));
+        List<TournamentParticipant> losers = new ArrayList<>(Collections.nCopies(teamsCount / 2, null));
         List<Future<?>> futures = new ArrayList<>();
 
         long start = System.currentTimeMillis();
 
 // 단일스레드 실행 로직
-        for (int i = 0; i < teamsCount; i += 2) {
-            TournamentParticipant winner = ms.fight(
-                    teams.get(i),
-                    teams.get(i + 1)
-            );
-
-            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
-            winners.add(winner);
-            losers.add(loser);
-        }
+//        for (int i = 0; i < teamsCount; i += 2) {
+//            int matchIdx = i / 2;
+//
+//            TournamentParticipant winner = ms.fight(
+//                    teams.get(i),
+//                    teams.get(i + 1)
+//            );
+//
+//            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
+//            winners.set(matchIdx, winner);
+//            losers.add(matchIdx, loser);
+//        }
 
 // 멀티스레드 적용 로직
-//        for (int i = 0; i < teamsCount; i += 2) {
-//            final int idx = i;
-//            futures.add(pool.submit(() -> {
-//                TournamentParticipant winner = ms.fight(
-//                        teams.get(idx),
-//                        teams.get(idx + 1)
-//                );
-//                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
-//
-//                synchronized (winners) {
-//                    winners.add(winner);
-//                }
-//                synchronized (losers) {
-//                    losers.add(loser);
-//                }
-//            }));
-//        }
-//
-//        for (Future<?> future : futures)
-//            future.get();
+        for (int i = 0; i < teamsCount; i += 2) {
+            final int idx = i;
+            final int matchIdx = i / 2;
+
+            futures.add(pool.submit(() -> {
+                TournamentParticipant winner = ms.fight(
+                        teams.get(idx),
+                        teams.get(idx + 1)
+                );
+                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
+
+                winners.set(matchIdx, winner);
+                losers.set(matchIdx, loser);
+            }));
+        }
+
+        for (Future<?> future : futures)
+            future.get();
 
         long end = System.currentTimeMillis();
 

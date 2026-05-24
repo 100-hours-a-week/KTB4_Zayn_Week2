@@ -336,4 +336,110 @@ long end = System.currentTimeMillis();
 - **무승부 발생 시 스레드 대기 시간을 0으로 하고 (테스트를 위해)**
 - `currentTimeMillis()`가 아닌 `nanoTime()`을 적용해 보다 정밀한 측정을 하기로 하였다.
 
+**측정 결과**
+
+![측정 결과](image/data1.png)
+
+![평균](image/data1_mean.png)
+
+단일 스레드에서 순차적으로 개별 매치를 진행할 때가<br/>
+멀티스레드를 통해 동시에 실행할 때보다 훨씬 오래걸릴 것이라는 기대와 다르게
+
+실제 수치를 살펴보면 **오히려 멀티스레드에서 더 많은 시간이 소요**되는 것을 확인할 수 있었다.
+
+---
+
+### 7. `시간 소요 원인 파악`
+
+앞선 성능 측정 시 실제론 멀티스레드 환경에서 시간이 더 오래 걸리는 원인 중 하나로 다음을 생각하였다.
+
+1. `실제 매치 로직의 비용` > `스레드 컨텍스트 스위칭 비용`
+
+즉, 멀티 스레드를 통해 동시 처리하여 로직을 동시 실행하는 이점보다<br/>
+멀티스레드로 인한 컨텍스트 스위칭 과정에서 비용이 더 클 것이란 생각이었다. 
+
+<br/>
+
+2. `synchronized`로 `winners`, `losers` 객체에 접근
+
+매치별 승자와 패자를 저장하는 각 리스트 객체에 접근할 때
+
+```java
+List<TournamentParticipant> winners = new ArrayList<>();
+List<TournamentParticipant> losers = new ArrayList<>();
+
+...
+
+synchronized (winners) { winners.add(winner); }
+synchronized (losers) { losers.add(loser); }
+```
+
+`synchronized`로 해당 객체의 락을 차지해야 하기에 스레드간 락 경쟁으로 인해 대기 시간이 발생할 것이란 생각이었다.
+
+그러나 해당 부분은 `winners`와 `losers`에 각 매치 결과(승자, 패자)가 동일 인덱스에 저장되어야 하기에<br/>
+위와 같은 기존 방식으로 할 경우 서로 다른 매치임에도<br/>
+승자와 패자에 동일 순서(인덱스)로 저장되는 문제를 야기할 수 있다는 걸 해당 시간 소요 원인을 생각하던 중 파악하였다.
+
+따라서 해당 리스트 객체를 초기화할 때 미리 크기를 지정하고
+
+```java
+List<TournamentParticipant> winners = new ArrayList<>(Collections.nCopies(teamsCount / 2, null));
+List<TournamentParticipant> losers  = new ArrayList<>(Collections.nCopies(teamsCount / 2, null));
+```
+
+각 스레드(매치)가 서로다른 인덱스로 `winners`, `losers`에 접근하도록 하여 문제를 해결하였다.
+
+```java
+final int matchIdx = i / 2;
+...
+
+winners.set(matchIdx, winner);
+losers.set(matchIdx, loser);
+```
+
+<br/>
+
+예상 원인 중 두 번째 원인에 해당하는 `synchronized`의 경우 성능이 아닌 기능상 문제가 있기에<br/>
+인덱스를 활용하여 락 경쟁을 제거하였기에 남은 첫 원인을 살펴보도록 하였다.
+
+```java
+private final ExecutorService pool = Executors.newFixedThreadPool(8);
+```
+
+기존 컨트롤러에서 사용하던 스레드 풀의 수는 16강 라운드의 총 매치 수인 `8`이었다.
+
+스레드간 컨텍스트 스위칭 비용을 줄이고자 이를 반으로(`4`) 줄인 경우의 라운드별 시간을 측정하여 보았다.
+
+![스레드 수 절반](image/thread4.png)
+
+![스레드 수 절반](image/thread4_mean.png)
+
+기존 스레드 수를 `8`로 한 경우와 비교해보면 전체적으로 라운드별 평균 소요 시간이 빨라졌음을 확인할 수 있었다.<br/>
+
+이를 통해 본 시스템(프로그램)에서는 매치 로직을 처리하는 시간적 비용이 적어
+
+`스레드 수를 늘려 동시에 매치를 처리함으로 얻는 이득 비용`보다<br/>
+`늘어난 스레드로 인한 컨텍스트 스위칭 비용`이 더 큼을 알 수 있었다.
+
+추가로 모든 매치가 무승부 로직을 진행하는 상황을 고려하여 보았다. `(= 스레드로 분리한 작업의 비용이 큰 경우)`
+
+스레드풀의 수를 `2, 4, 8`개로 나누어 `currentTimeMillis()`로 측정해 본 결과
+
+![작업 비용 큰 경우](image/sleep.png)
+
+![작업 비용 큰 경우_평균](image/sleep_mean.png)
+
+16강의 경우 스레드 수 증가에 어느정도 선형적으로 비례하여 시간적 비용의 이득이 나타났고<br/>
+8강의 경우 스레드 수가 4일 때부터 시간적 비용이 동일하게 saturation되었으며<br/>
+4강과 결승의 경우 스레드 수가 2일때부터 모두 비슷한 시간적 비용이 나타났다.
+
+16강의 경우 8개, 8강은 4개, 4강은 2개, 결승은 1개의 매치가 발생하기에<br/>
+**각 라운드의 매치 수에 맞게 스레드 수가 있을 때** 시간적 이득을 최대로 봄을 알게 되었다.
+
+**이를 통해 처리해야할 작업이 어느정도 큰 경우(해당 시스템에서는 무승부 로직)에<br/>
+스레드 수를 늘리는 것이 성능 개선에 도움을 줌을 알 수 있었다.** 
+
+**동시에 필요 스레드 수보다 과하게 사용할 경우엔<br/>
+멀티스레드를 통한 시간적 비용 이득을 볼 수 없으며, 스레드의 컨텍스트 스위칭 비용만 상승함을 확인했다.**
+
 ---
