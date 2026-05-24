@@ -1,8 +1,10 @@
 package org.example.controller;
 
 import org.example.common.ErrorMessage;
+import org.example.common.RoundName;
 import org.example.common.TournamentConstant;
 import org.example.common.UefaTeamInfo;
+import org.example.log.TournamentLogger;
 import org.example.model.FootballTeam;
 import org.example.model.TournamentParticipant;
 import org.example.service.MatchService;
@@ -98,31 +100,45 @@ public class EnhancedUefaController {
         List<TournamentParticipant> losers = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
 
-//        long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
 
+// 단일스레드 실행 로직
         for (int i = 0; i < teamsCount; i += 2) {
-            final int idx = i;
-            futures.add(pool.submit(() -> {
-                TournamentParticipant winner = ms.fight(
-                        teams.get(idx),
-                        teams.get(idx + 1)
-                );
-                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
+            TournamentParticipant winner = ms.fight(
+                    teams.get(i),
+                    teams.get(i + 1)
+            );
 
-                synchronized (winners) {
-                    winners.add(winner);
-                }
-                synchronized (losers) {
-                    losers.add(loser);
-                }
-            }));
+            TournamentParticipant loser = (winner == teams.get(i)) ? teams.get(i + 1) : teams.get(i);
+            winners.add(winner);
+            losers.add(loser);
         }
 
-        for (Future<?> future : futures)
-            future.get();
+// 멀티스레드 적용 로직
+//        for (int i = 0; i < teamsCount; i += 2) {
+//            final int idx = i;
+//            futures.add(pool.submit(() -> {
+//                TournamentParticipant winner = ms.fight(
+//                        teams.get(idx),
+//                        teams.get(idx + 1)
+//                );
+//                TournamentParticipant loser = (winner == teams.get(idx)) ? teams.get(idx + 1) : teams.get(idx);
+//
+//                synchronized (winners) {
+//                    winners.add(winner);
+//                }
+//                synchronized (losers) {
+//                    losers.add(loser);
+//                }
+//            }));
+//        }
+//
+//        for (Future<?> future : futures)
+//            future.get();
 
-//        long end = System.currentTimeMillis();
-//        System.out.println((end - start) + "ms");
+        long end = System.currentTimeMillis();
+
+        TournamentLogger.saveLog(RoundName.getRound(teamsCount), (end - start));
 
         int roundMatchCount = 0;
         for (int i = 0; i < teamsCount; i += 2) {
